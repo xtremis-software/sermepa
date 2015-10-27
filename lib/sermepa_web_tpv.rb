@@ -1,6 +1,7 @@
+require 'sermepa_web_tpv/version'
 require 'active_support/core_ext/module/attribute_accessors'
-module SermepaWebTpv
 
+module SermepaWebTpv
   mattr_accessor :transaction_model_transaction_number_attribute
   @@transaction_model_transaction_number_attribute = :transaction_number
 
@@ -47,7 +48,7 @@ module SermepaWebTpv
 
   autoload :Request, 'sermepa_web_tpv/request'
   autoload :Response, 'sermepa_web_tpv/response'
-
 end
+
 require 'sermepa_web_tpv/persistence/active_record'
 require 'sermepa_web_tpv/railtie'
