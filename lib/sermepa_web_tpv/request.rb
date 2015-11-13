@@ -1,8 +1,12 @@
+require_relative 'signature_generation.rb'
 require 'uri'
-require 'digest/sha1'
 
+#
+# Takes care of building a payment request as well as generating a valid signature
+#
 module SermepaWebTpv
   class Request < Struct.new(:transaction, :description)
+    include SermepaWebTpv::SignatureGeneration
     include SermepaWebTpv::Persistence::ActiveRecord
 
     def bank_url
@@ -10,7 +14,22 @@ module SermepaWebTpv
     end
 
     def options
-      optional_options.merge(must_options)
+      {
+          ds_signatureversion: signature_version,
+          ds_signature: signature(merchant_params, operation_key(transaction_number)),
+          ds_merchantparameters: merchant_params
+      }.transform_keys { |key| key.to_s.upcase }
+    end
+
+    def signature_version
+      'HMAC_SHA256_V1'
+    end
+
+    def merchant_params
+      form_fields = required_merchant_params.merge(optional_merchant_params)
+      form_fields.transform_keys! { |key| key.to_s.upcase }
+
+      Base64.strict_encode64(form_fields.to_json)
     end
 
     def transact(&block)
@@ -20,6 +39,29 @@ module SermepaWebTpv
     end
 
     private
+
+    def required_merchant_params
+      {
+          ds_merchant_amount: amount,
+          ds_merchant_currency: SermepaWebTpv.currency,
+          ds_merchant_order: transaction_number,
+          ds_merchant_productdescription: description,
+          ds_merchant_merchantcode: SermepaWebTpv.merchant_code,
+          ds_merchant_terminal: SermepaWebTpv.terminal,
+          ds_merchant_transactionType: SermepaWebTpv.transaction_type,
+          ds_merchant_consumerlanguage: SermepaWebTpv.language,
+          ds_merchant_merchantuRL: url_for(:callback_response_path)
+      }
+    end
+
+    def optional_merchant_params
+      {
+          ds_merchant_titular: SermepaWebTpv.merchant_name,
+          ds_merchant_urlko: url_for(:redirect_failure_path),
+          ds_merchant_urlok: url_for(:redirect_success_path),
+          ds_merchant_paymethods: SermepaWebTpv.pay_methods
+      }.delete_if { |key, value| value.blank? }
+    end
 
     def transaction_number_attribute
       SermepaWebTpv.transaction_model_transaction_number_attribute
@@ -33,30 +75,6 @@ module SermepaWebTpv
       (transaction_amount * 100).to_i.to_s
     end
 
-    def must_options
-      {
-        'Ds_Merchant_Amount' =>             amount,
-        'Ds_Merchant_Currency' =>           SermepaWebTpv.currency, #EURO
-        'Ds_Merchant_Order' =>              transaction_number,
-        'Ds_Merchant_ProductDescription' => description,
-        'Ds_Merchant_MerchantCode' =>       SermepaWebTpv.merchant_code,
-        'Ds_Merchant_MerchantSignature' =>  signature,
-        'Ds_Merchant_Terminal' =>           SermepaWebTpv.terminal,
-        'Ds_Merchant_TransactionType' =>    SermepaWebTpv.transaction_type,
-        'Ds_Merchant_ConsumerLanguage' =>   SermepaWebTpv.language,
-        'Ds_Merchant_MerchantURL' =>        url_for(:callback_response_path)
-      }
-    end
-
-    def signature
-      #Ds_Merchant_Amount + Ds_Merchant_Order +Ds_Merchant_MerchantCode + Ds_Merchant_Currency +Ds_Merchant_TransactionType + Ds_Merchant_MerchantURL + CLAVE SECRETA
-      merchant_code = SermepaWebTpv.merchant_code
-      currency = SermepaWebTpv.currency
-      transaction_type = SermepaWebTpv.transaction_type
-      callback_url = url_for(:callback_response_path)
-      merchant_secret_key = SermepaWebTpv.merchant_secret_key
-      Digest::SHA1.hexdigest("#{amount}#{transaction_number}#{merchant_code}#{currency}#{transaction_type}#{callback_url}#{merchant_secret_key}").upcase
-    end
 
     # Available options
     # redirect_success_path
@@ -70,16 +88,5 @@ module SermepaWebTpv
         URI.join(host, path).to_s
       end
     end
-
-    def optional_options
-      {
-        'Ds_Merchant_Titular'      => SermepaWebTpv.merchant_name,
-        'Ds_Merchant_UrlKO'        => url_for(:redirect_failure_path),
-        'Ds_Merchant_UrlOK'        => url_for(:redirect_success_path),
-        'Ds_Merchant_PayMethods'   => SermepaWebTpv.pay_methods
-      }.delete_if {|key, value| value.blank? }
-    end
-
-
   end
 end

@@ -1,26 +1,25 @@
-require 'digest/sha1'
+require_relative 'signature_generation.rb'
+require 'active_support/core_ext/hash/indifferent_access'
 
+#
+# Parses a notification response from Redsys and determines whether it's legit or not
+#
 module SermepaWebTpv
   class Response < Struct.new(:params)
+    include SermepaWebTpv::SignatureGeneration
+
     def valid?
-      params[:Ds_Signature] == signature
+      response_signature = Base64.strict_encode64(Base64.urlsafe_decode64(params[:Ds_Signature]))
+      calculated_signature = signature(params[:Ds_MerchantParameters], operation_key(merchant_params[:Ds_Order]))
+      response_signature == calculated_signature
     end
 
     def success?
-      params[:Ds_Response].to_i == 0
+      merchant_params[:Ds_Response].to_i == 0
     end
 
-    private
-    def signature
-      response = %W(
-        #{params[:Ds_Amount]}
-        #{params[:Ds_Order]}
-        #{params[:Ds_MerchantCode]}
-        #{params[:Ds_Currency]}
-        #{params[:Ds_Response]}
-        #{SermepaWebTpv.merchant_secret_key}
-      ).join
-      Digest::SHA1.hexdigest(response).upcase
+    def merchant_params
+      @merchant_params ||= JSON.parse(Base64.decode64(params[:Ds_MerchantParameters])).with_indifferent_access
     end
   end
 end

@@ -1,3 +1,6 @@
+#
+# Adds some extra methods to any active record model to make the integration easier
+#
 module SermepaWebTpv
   module Persistence
     module ActiveRecord

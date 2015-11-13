@@ -1,6 +1,9 @@
 require 'sermepa_web_tpv/version'
 require 'active_support/core_ext/module/attribute_accessors'
 
+#
+# Main module that sets up merchant parameters and loads dependent classes
+#
 module SermepaWebTpv
   mattr_accessor :transaction_model_transaction_number_attribute
   @@transaction_model_transaction_number_attribute = :transaction_number
