@@ -12,7 +12,7 @@ module SermepaWebTpv
       cipher = OpenSSL::Cipher::Cipher.new('DES-EDE3-CBC')
       cipher.encrypt
       cipher.key = Base64.decode64(SermepaWebTpv.merchant_secret_key)
-      data = merchant_order
+      data = merchant_order.to_s
       if (data.bytesize % 8) > 0
         data += "\0" * (8 - data.bytesize % 8)
       end

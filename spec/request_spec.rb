@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe SermepaWebTpv::Request do
-  let(:transaction) { OpenStruct.new(amount: 100, transaction_number: '1111') }
+  let(:transaction) { OpenStruct.new(amount: 100, transaction_number: 1111) }
   let(:request) { SermepaWebTpv::Request.new(transaction, 'Test product') }
 
   before(:each) do

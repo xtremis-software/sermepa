@@ -44,7 +44,7 @@ module SermepaWebTpv
       {
           ds_merchant_amount: amount,
           ds_merchant_currency: SermepaWebTpv.currency,
-          ds_merchant_order: transaction_number,
+          ds_merchant_order: transaction_number.to_s,
           ds_merchant_productdescription: description,
           ds_merchant_merchantcode: SermepaWebTpv.merchant_code,
           ds_merchant_terminal: SermepaWebTpv.terminal,
